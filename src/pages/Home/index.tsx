@@ -1,7 +1,15 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 import { Feather as Icon } from '@expo/vector-icons'
-import { Text, View, ImageBackground, Image, StyleSheet } from 'react-native'
-import { RectButton } from 'react-native-gesture-handler'
+import {
+  Text,
+  View,
+  ImageBackground,
+  Image,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native'
+import { RectButton, TextInput } from 'react-native-gesture-handler'
 
 import logo from '../../assets/logo.png'
 import backgroundImage from '../../assets/home-background.png'
@@ -9,12 +17,22 @@ import { useNavigation } from '@react-navigation/native'
 
 export const Home: React.FC = () => {
   const navigation = useNavigation()
+
+  const [uf, setUf] = useState('')
+  const [city, setCity] = useState('')
+
   const handleNavigateToPoints = useCallback(() => {
-    navigation.navigate('Points')
-  }, [navigation])
+    navigation.navigate('Points', {
+      uf,
+      city,
+    })
+  }, [navigation, uf, city])
 
   return (
-    <>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{ flex: 1 }}
+    >
       <ImageBackground
         source={backgroundImage}
         style={styles.container}
@@ -22,15 +40,34 @@ export const Home: React.FC = () => {
       >
         <View style={styles.main}>
           <Image source={logo} />
-          <Text style={styles.title}>
-            Seu marketplace de coleta de resíduos
-          </Text>
-          <Text style={styles.description}>
-            Ajudamos pessoas a encontrarem pontos de coleta de forma eficiente
-          </Text>
+          <View>
+            <Text style={styles.title}>
+              Seu marketplace de coleta de resíduos
+            </Text>
+            <Text style={styles.description}>
+              Ajudamos pessoas a encontrarem pontos de coleta de forma eficiente
+            </Text>
+          </View>
         </View>
 
         <View style={styles.footer}>
+          <TextInput
+            value={uf}
+            onChangeText={setUf}
+            placeholder="Digite a UF"
+            maxLength={2}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            style={styles.input}
+          />
+
+          <TextInput
+            value={city}
+            onChangeText={setCity}
+            placeholder="Digite a cidade"
+            style={styles.input}
+          />
+
           <RectButton style={styles.button} onPress={handleNavigateToPoints}>
             <View style={styles.buttonIcon}>
               <Text>
@@ -41,7 +78,7 @@ export const Home: React.FC = () => {
           </RectButton>
         </View>
       </ImageBackground>
-    </>
+    </KeyboardAvoidingView>
   )
 }
 

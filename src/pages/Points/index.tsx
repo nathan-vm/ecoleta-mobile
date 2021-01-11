@@ -1,18 +1,126 @@
-import React, { useCallback } from 'react'
-import { StyleSheet, Text, View, ScrollView } from 'react-native'
+import React, { useCallback, useEffect, useState } from 'react'
+import { StyleSheet, Text, View, ScrollView, Image, Alert } from 'react-native'
 import Constants from 'expo-constants'
 import { Feather as Icon } from '@expo/vector-icons'
 import { TouchableOpacity } from 'react-native-gesture-handler'
-import { useNavigation } from '@react-navigation/native'
-import MapView from 'react-native-maps'
+import { useNavigation, useRoute } from '@react-navigation/native'
+import MapView, { Marker } from 'react-native-maps'
 import { SvgUri } from 'react-native-svg'
+import * as Location from 'expo-location'
+import api from '../../services/api'
+
+interface Item {
+  id: number
+  title: string
+  image_url: string
+}
+
+interface Point {
+  id: number
+  image: string
+  name: string
+  city: string
+  uf: string
+  latitude: number
+  longitude: number
+}
+
+interface Coords {
+  lat: number
+  lng: number
+}
+
+interface Params {
+  uf: string
+  city: string
+}
 
 export const Points: React.FC = () => {
   const navigation = useNavigation()
+  const route = useRoute()
+  const routeParams = route.params as Params
+
+  const [items, setItems] = useState<Item[]>([])
+  const [points, setPoints] = useState<Point[]>([])
+  const [selectedItems, setSelectedItems] = useState<number[]>([])
+  const [initialCoords, setInitialCoords] = useState<Coords>({ lat: 0, lng: 0 })
+
+  useEffect(() => {
+    async function loadPosition(): Promise<void> {
+      const { status } = await Location.requestPermissionsAsync()
+
+      if (status !== 'granted') {
+        Alert.alert(
+          'Ooops',
+          'Precisamos de sua permissão para obter a localização',
+        )
+        return
+      }
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.LocationAccuracy.Highest,
+      })
+
+      const { latitude, longitude } = location.coords
+
+      setInitialCoords({
+        lat: latitude,
+        lng: longitude,
+      })
+    }
+
+    loadPosition()
+  })
+
+  useEffect(() => {
+    if (routeParams.city && routeParams.uf) {
+      api
+        .get('points', {
+          params: {
+            city: routeParams.city,
+            uf: routeParams.uf,
+            items: selectedItems,
+          },
+        })
+        .then(response => {
+          setPoints(response.data)
+        })
+        .catch(e => console.log(e))
+    }
+  }, [routeParams, selectedItems])
+
+  useEffect(() => {
+    api
+      .get('items')
+      .then(response => {
+        setItems(response.data)
+      })
+      .catch(e => console.log(e))
+  }, [])
 
   const handleNavigateBack = useCallback(() => {
     navigation.goBack()
   }, [navigation])
+
+  const handleNavigateToDetail = useCallback(
+    (id: number) => {
+      navigation.navigate('Detail', { point_id: id })
+    },
+    [navigation],
+  )
+
+  const handleSelectItem = useCallback(
+    (id: number) => {
+      const alreadySelected = selectedItems.findIndex(item => item === id)
+
+      if (alreadySelected >= 0) {
+        const filteredItems = selectedItems.filter(item => item !== id)
+        setSelectedItems(filteredItems)
+      } else {
+        setSelectedItems([...selectedItems, id])
+      }
+    },
+    [selectedItems],
+  )
 
   return (
     <>
@@ -27,7 +135,40 @@ export const Points: React.FC = () => {
         </Text>
 
         <View style={styles.mapContainer}>
-          <MapView style={styles.map} />
+          {initialCoords.lat !== 0 && (
+            <MapView
+              style={styles.map}
+              initialRegion={{
+                latitude: initialCoords.lat,
+                longitude: initialCoords.lng,
+                latitudeDelta: 0.014,
+                longitudeDelta: 0.014,
+              }}
+            >
+              {points &&
+                points.map(point => (
+                  <Marker
+                    key={String(point.id)}
+                    style={styles.mapMarker}
+                    onPress={() => handleNavigateToDetail(point.id)}
+                    coordinate={{
+                      latitude: Number(point.latitude),
+                      longitude: Number(point.longitude),
+                    }}
+                  >
+                    <View style={styles.mapMarkerContainer}>
+                      <Image
+                        style={styles.mapMarkerImage}
+                        source={{
+                          uri: point.image,
+                        }}
+                      />
+                      <Text style={styles.mapMarkerTitle}>{point.name}</Text>
+                    </View>
+                  </Marker>
+                ))}
+            </MapView>
+          )}
         </View>
       </View>
       <View style={styles.itemsContainer}>
@@ -36,54 +177,23 @@ export const Points: React.FC = () => {
           horizontal
           showsHorizontalScrollIndicator={false}
         >
-          <TouchableOpacity style={styles.item} onPress={() => {}}>
-            <SvgUri
-              width={42}
-              height={42}
-              uri="http://192.168.0.101:8888/uploads/papeis-papelao.svg"
-            />
-            <Text style={styles.itemTitle}>Papelão</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.item} onPress={() => {}}>
-            <SvgUri
-              width={42}
-              height={42}
-              uri="http://192.168.0.101:8888/uploads/papeis-papelao.svg"
-            />
-            <Text style={styles.itemTitle}>Papelão</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.item} onPress={() => {}}>
-            <SvgUri
-              width={42}
-              height={42}
-              uri="http://192.168.0.101:8888/uploads/papeis-papelao.svg"
-            />
-            <Text style={styles.itemTitle}>Papelão</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.item} onPress={() => {}}>
-            <SvgUri
-              width={42}
-              height={42}
-              uri="http://192.168.0.101:8888/uploads/papeis-papelao.svg"
-            />
-            <Text style={styles.itemTitle}>Papelão</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.item} onPress={() => {}}>
-            <SvgUri
-              width={42}
-              height={42}
-              uri="http://192.168.0.101:8888/uploads/papeis-papelao.svg"
-            />
-            <Text style={styles.itemTitle}>Papelão</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.item} onPress={() => {}}>
-            <SvgUri
-              width={42}
-              height={42}
-              uri="http://192.168.0.101:8888/uploads/papeis-papelao.svg"
-            />
-            <Text style={styles.itemTitle}>Papelão</Text>
-          </TouchableOpacity>
+          {items &&
+            items.map(item => (
+              <TouchableOpacity
+                activeOpacity={0.6}
+                key={String(item.id)}
+                style={[
+                  styles.item,
+                  selectedItems.includes(item.id) ? styles.selectedItem : {},
+                ]}
+                onPress={() => {
+                  handleSelectItem(item.id)
+                }}
+              >
+                <SvgUri width={42} height={42} uri={item.image_url} />
+                <Text style={styles.itemTitle}>{item.title}</Text>
+              </TouchableOpacity>
+            ))}
         </ScrollView>
       </View>
     </>
